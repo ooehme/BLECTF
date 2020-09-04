@@ -1,6 +1,8 @@
 #include <Arduino.h>
 #include <NimBLEDevice.h>
 
+NimBLEUUID UUID_SERVICEDATA = NimBLEUUID::fromString("47be4cef-5f01-49f0-bb29-f86b572293c3");
+
 void scanEndedCB(NimBLEScanResults results);
 
 static uint32_t scanTime = 4; /** 0 = scan forever */
@@ -11,15 +13,27 @@ class AdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks
   {
     if (advertisedDevice->haveName())
     {
-      Serial.print("Advertised Device found: ");
-      Serial.println(advertisedDevice->toString().c_str());
+      //Serial.print("Advertised Device found: ");
+      //Serial.println(advertisedDevice->toString().c_str());
+
+      Serial.print("RSSI        :\t");
+      Serial.println(advertisedDevice->getRSSI());
+      Serial.print("NAME        :\t");
+      Serial.println(advertisedDevice->getName().c_str());
+      Serial.print("MANUFACTURER:\t");
+      Serial.println(advertisedDevice->getManufacturerData().c_str());
+      if (advertisedDevice->haveServiceData())
+      {
+        Serial.print("SERVICEDATA :\t");
+        Serial.println(advertisedDevice->getServiceData(UUID_SERVICEDATA).c_str());
+      }
     }
   };
 };
 
 void scanEndedCB(NimBLEScanResults results)
 {
-  Serial.println("Scan Ended");
+  Serial.println("-----------------");
 }
 
 void setup()
@@ -41,6 +55,6 @@ void setup()
 
 void loop()
 {
-  delay(500);
+  delay(5000);
   NimBLEDevice::getScan()->start(scanTime, scanEndedCB);
 }

@@ -2,6 +2,11 @@
 #include <NimBLEDevice.h>
 
 static NimBLEServer *pServer;
+const char *UUID_SERVICE = "47be4cef-5f01-49f0-bb29-f86b572293cc";
+const char *UUID_SERVICEDATA = "47be4cef-5f01-49f0-bb29-f86b572293c3";
+const char *UUID_CHARACT_PLAYERNAME = "0f0e9fd8-5969-4351-8fb5-13c83cdca6cd";
+const char *UUID_CHARACT_TEAMNAME = "300f9c95-3bb0-40cb-a9b2-361e566c43cc";
+const char *UUID_CHARACT_TEAMCOLOR = "570fc528-12ac-4d88-8704-e8c3b60903f8";
 
 const struct teamcolorids
 {
@@ -25,27 +30,35 @@ void setup()
    Serial.begin(115200);
    Serial.println("");
 
-   String uuid = generateUUID(playerName, teamColor);
-
-   char uuidBuf[37];
-   uuid.toCharArray(uuidBuf, 37);
-   
-   Serial.print("uuid2 :\t\t");
-   Serial.println(uuidBuf);
-
    NimBLEDevice::init("Player");
    NimBLEDevice::setPower(ESP_PWR_LVL_N0); /** ESP_PWR_LVL_P9 +9db */
    NimBLEDevice::setSecurityAuth(BLE_SM_PAIR_AUTHREQ_SC);
 
    pServer = NimBLEDevice::createServer();
 
-   NimBLEService *pPlayerService = pServer->createService(uuidBuf);
+   NimBLEService *pPlayerService = pServer->createService(UUID_SERVICE);
+   NimBLEService *pServiceData = pServer->createService(UUID_SERVICEDATA);
+   NimBLECharacteristic *pCharacteristicPlayername = pPlayerService->createCharacteristic(UUID_CHARACT_PLAYERNAME, NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::BROADCAST);
+   pCharacteristicPlayername->setValue("Player 01");
+   NimBLECharacteristic *pCharacteristicTeamcolor = pPlayerService->createCharacteristic(UUID_CHARACT_TEAMCOLOR, NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::BROADCAST);
+   pCharacteristicTeamcolor->setValue(TEAMCOLORIDS.RED);
+   NimBLECharacteristic *pCharacteristicTeamname = pPlayerService->createCharacteristic(UUID_CHARACT_TEAMNAME, NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::BROADCAST);
+   pCharacteristicTeamname->setValue("Intim");
    pPlayerService->start();
+
+   NimBLEAdvertisementData oAdvertisementData = NimBLEAdvertisementData();
+   oAdvertisementData.setShortName("AFP");
+   oAdvertisementData.setName("AFPlayer");
+   String manufacturerName = "AirFlag";
+   oAdvertisementData.setManufacturerData(manufacturerName.c_str());
+   String data = "shockbase,3,rattikarls";
+   oAdvertisementData.setServiceData(pServiceData->getUUID(), data.c_str());
 
    NimBLEAdvertising *pAdvertising = NimBLEDevice::getAdvertising();
    pAdvertising->addServiceUUID(pPlayerService->getUUID());
+   pAdvertising->setAdvertisementData(oAdvertisementData);
 
-   pAdvertising->setScanResponse(false);
+   pAdvertising->setScanResponse(true);
    pAdvertising->start();
 
    Serial.println("Advertising Started");
@@ -54,97 +67,4 @@ void setup()
 void loop()
 {
    delay(2000);
-}
-
-String generateUUID(String playerId, int teamColor)
-{
-   String payload;
-   String uuid;
-   char teamColorBuf[5];
-   itoa(teamColor, teamColorBuf, 10);
-
-   playerId += ",";
-   playerId += teamColorBuf;
-
-   char str[playerId.length() + 1];
-   playerId.toCharArray(str, playerId.length() + 1);
-
-   char result[strlen(str)][5];
-   hexCon(str, result);
-
-   for (int i = 0; i < strlen(str); i++)
-   {
-      payload += result[i];
-   }
-
-   while(payload.length() < 32)
-   {
-      payload += "0";
-   }
-
-   Serial.print("payload :\t");
-   Serial.println(payload);
-
-   uuid = payload.substring(0, 8) + "-" + payload.substring(8, 12) + "-" + payload.substring(12, 16) + "-" + payload.substring(16, 20) + "-" + payload.substring(20);
-   Serial.print("uuid1 :\t\t");
-   Serial.println(uuid);
-
-   return uuid;
-}
-
-void hexCon(char str[], char result[][5])
-{
-   int i, check, rem = 0;
-   char res[20], res2[20];
-   int len = 0;
-   char temp;
-
-   for (i = 0; i < strlen(str); i++)
-   {
-      len = 0;
-      check = str[i];
-      while (check > 0)
-      {
-         rem = check % 16;
-         switch (rem)
-         {
-         case 10:
-            temp = 'A';
-            break;
-         case 11:
-            temp = 'B';
-            break;
-         case 12:
-            temp = 'C';
-            break;
-         case 13:
-            temp = 'D';
-            break;
-         case 14:
-            temp = 'E';
-            break;
-         case 15:
-            temp = 'F';
-            break;
-         default:
-            temp = rem + '0';
-         }
-         res[len] = temp;
-         check = check / 16;
-         len++;
-      }
-
-      reverse(res, len, res2); //reversing the digits
-      res2[len] = '\0';        //adding null character at the end of string
-      strcpy(result[i], res2); //copying all data to result array
-   }
-}
-
-void reverse(char str[], int size, char rev[])
-{
-   int i = 0, j = 0;
-   for (i = size - 1, j = 0; i >= 0; i--, j++)
-   {
-      rev[j] = str[i];
-   }
 }
