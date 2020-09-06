@@ -1,60 +1,55 @@
 #include <Arduino.h>
 #include <NimBLEDevice.h>
+#include <NimBLEAdvertisedDevice.h>
+#include "NimBLEBeacon.h"
 
-NimBLEUUID UUID_SERVICEDATA = NimBLEUUID::fromString("47be4cef-5f01-49f0-bb29-f86b572293c3");
+const NimBLEUUID UUID_AIRFLAG_SERVICE = NimBLEUUID("47be4cef-5f01-49f0-bb29-f86b572293cc");
 
-void scanEndedCB(NimBLEScanResults results);
+int scanTime = 4;
+BLEScan *pBLEScan;
 
-static uint32_t scanTime = 4; /** 0 = scan forever */
+void processAirflagDevice(BLEAdvertisedDevice *pPlayerDevice);
 
-class AdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks
+class AirFlagDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
 {
-  void onResult(NimBLEAdvertisedDevice *advertisedDevice)
+  void onResult(BLEAdvertisedDevice *advertisedDevice)
   {
-    if (advertisedDevice->haveName())
+    if (advertisedDevice->isAdvertisingService(UUID_AIRFLAG_SERVICE))
     {
-      //Serial.print("Advertised Device found: ");
-      //Serial.println(advertisedDevice->toString().c_str());
+      digitalWrite(2, HIGH);
+      delay(25);
+      digitalWrite(2, LOW);
 
-      Serial.print("RSSI        :\t");
-      Serial.println(advertisedDevice->getRSSI());
-      Serial.print("NAME        :\t");
-      Serial.println(advertisedDevice->getName().c_str());
-      Serial.print("MANUFACTURER:\t");
-      Serial.println(advertisedDevice->getManufacturerData().c_str());
-      if (advertisedDevice->haveServiceData())
-      {
-        Serial.print("SERVICEDATA :\t");
-        Serial.println(advertisedDevice->getServiceData(UUID_SERVICEDATA).c_str());
-      }
+      processAirflagDevice(advertisedDevice);
     }
   };
 };
 
-void scanEndedCB(NimBLEScanResults results)
+void processAirflagDevice(BLEAdvertisedDevice *pPlayerDevice)
 {
-  Serial.println("-----------------");
+  Serial.println(pPlayerDevice->toString().c_str());
 }
 
 void setup()
 {
   Serial.begin(115200);
-  Serial.println("Starting NimBLE Client");
+  Serial.println("Starting AirFlag.");
 
-  NimBLEDevice::init("");
-  NimBLEDevice::setSecurityAuth(BLE_SM_PAIR_AUTHREQ_SC);
-  NimBLEDevice::setPower(ESP_PWR_LVL_N0); /** +9db */
+  pinMode(2, OUTPUT);
 
-  NimBLEScan *pScan = NimBLEDevice::getScan();
-  pScan->setAdvertisedDeviceCallbacks(new AdvertisedDeviceCallbacks());
-  pScan->setInterval(45);
-  pScan->setWindow(15);
-  pScan->setActiveScan(true);
-  pScan->start(scanTime, scanEndedCB);
+  BLEDevice::init("");
+  pBLEScan = BLEDevice::getScan();
+  pBLEScan->setAdvertisedDeviceCallbacks(new AirFlagDeviceCallbacks());
+  pBLEScan->setDuplicateFilter(true);
+  pBLEScan->setActiveScan(false);
+  pBLEScan->setInterval(100);
+  pBLEScan->setWindow(99);
 }
 
 void loop()
 {
-  delay(5000);
-  NimBLEDevice::getScan()->start(scanTime, scanEndedCB);
+  Serial.println("Scanning...");
+  pBLEScan->start(scanTime, false);
+  Serial.println("Scan done!");
+  pBLEScan->clearResults();
 }

@@ -2,11 +2,8 @@
 #include <NimBLEDevice.h>
 
 static NimBLEServer *pServer;
-const char *UUID_SERVICE = "47be4cef-5f01-49f0-bb29-f86b572293cc";
-const char *UUID_SERVICEDATA = "47be4cef-5f01-49f0-bb29-f86b572293c3";
-const char *UUID_CHARACT_PLAYERNAME = "0f0e9fd8-5969-4351-8fb5-13c83cdca6cd";
-const char *UUID_CHARACT_TEAMNAME = "300f9c95-3bb0-40cb-a9b2-361e566c43cc";
-const char *UUID_CHARACT_TEAMCOLOR = "570fc528-12ac-4d88-8704-e8c3b60903f8";
+
+const NimBLEUUID UUID_AIRFLAG_SERVICE = NimBLEUUID::fromString("47be4cef-5f01-49f0-bb29-f86b572293cc");
 
 const struct teamcolorids
 {
@@ -16,49 +13,40 @@ const struct teamcolorids
    int YELLOW = 3;
    int PINK = 4;
    int WHITE = 5;
-} TEAMCOLORIDS;
+} TEAMCOLORS;
 
-String playerName = "Player 01";
-int teamColor = TEAMCOLORIDS.RED;
-
-String generateUUID(String playerId, int teamColor);
-void reverse(char str[], int size, char rev[]);
-void hexCon(char str[], char result[][5]);
+std::string playerName = "Player 01";
+std::string teamColor = "BLUE";
+std::string teamName = "rattikarls";
 
 void setup()
 {
    Serial.begin(115200);
-   Serial.println("");
+   Serial.println("Starting AirFlag");
 
-   NimBLEDevice::init("Player");
-   NimBLEDevice::setPower(ESP_PWR_LVL_N0); /** ESP_PWR_LVL_P9 +9db */
-   NimBLEDevice::setSecurityAuth(BLE_SM_PAIR_AUTHREQ_SC);
+   NimBLEDevice::init(teamColor);
+   NimBLEDevice::setPower(ESP_PWR_LVL_N0);
 
    pServer = NimBLEDevice::createServer();
 
-   NimBLEService *pPlayerService = pServer->createService(UUID_SERVICE);
-   NimBLEService *pServiceData = pServer->createService(UUID_SERVICEDATA);
-   NimBLECharacteristic *pCharacteristicPlayername = pPlayerService->createCharacteristic(UUID_CHARACT_PLAYERNAME, NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::BROADCAST);
-   pCharacteristicPlayername->setValue("Player 01");
-   NimBLECharacteristic *pCharacteristicTeamcolor = pPlayerService->createCharacteristic(UUID_CHARACT_TEAMCOLOR, NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::BROADCAST);
-   pCharacteristicTeamcolor->setValue(TEAMCOLORIDS.RED);
-   NimBLECharacteristic *pCharacteristicTeamname = pPlayerService->createCharacteristic(UUID_CHARACT_TEAMNAME, NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::BROADCAST);
-   pCharacteristicTeamname->setValue("Intim");
+   NimBLEService *pPlayerService = pServer->createService(UUID_AIRFLAG_SERVICE);
+
    pPlayerService->start();
 
    NimBLEAdvertisementData oAdvertisementData = NimBLEAdvertisementData();
-   oAdvertisementData.setShortName("AFP");
-   oAdvertisementData.setName("AFPlayer");
-   String manufacturerName = "AirFlag";
-   oAdvertisementData.setManufacturerData(manufacturerName.c_str());
-   String data = "shockbase,3,rattikarls";
-   oAdvertisementData.setServiceData(pServiceData->getUUID(), data.c_str());
+   NimBLEAdvertisementData oScanResponseData = NimBLEAdvertisementData();
+
+   oAdvertisementData.setFlags(0 | BLE_HS_ADV_F_DISC_GEN | BLE_HS_ADV_F_BREDR_UNSUP);
+   oAdvertisementData.setShortName(playerName);
+   oAdvertisementData.setName(teamColor);
+   oAdvertisementData.setManufacturerData(teamName);
 
    NimBLEAdvertising *pAdvertising = NimBLEDevice::getAdvertising();
-   pAdvertising->addServiceUUID(pPlayerService->getUUID());
+   pAdvertising->addServiceUUID(UUID_AIRFLAG_SERVICE);
+   pAdvertising->setAdvertisementType(BLE_HCI_ADV_TYPE_ADV_SCAN_IND);
    pAdvertising->setAdvertisementData(oAdvertisementData);
-
    pAdvertising->setScanResponse(true);
+
    pAdvertising->start();
 
    Serial.println("Advertising Started");
